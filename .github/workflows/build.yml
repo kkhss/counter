@@ -24,11 +24,38 @@ jobs:
       with:
         gradle-version: '8.2'
 
-    - name: Build APK with Gradle
-      run: gradle assembleDebug -Pandroid.useAndroidX=true -Pandroid.enableJetifier=true --stacktrace
+    # 1. 클라우드 빌드 머신에서 전용 서명 키 생성
+    - name: Generate Keystore
+      run: |
+        keytool -genkeypair -v \
+          -keystore release.jks \
+          -alias umacounter \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass mysecretpass \
+          -keypass mysecretpass \
+          -dname "CN=UmaCounter, OU=Dev, O=Personal, L=Seoul, S=Seoul, C=KR"
 
-    - name: Upload APK
+    # 2. 릴리즈 APK 빌드
+    - name: Build Release APK
+      run: gradle assembleRelease -Pandroid.useAndroidX=true -Pandroid.enableJetifier=true --stacktrace
+
+    # 3. 공식 apksigner 도구로 서명 주입
+    - name: Sign APK
+      run: |
+        BUILD_TOOLS_DIR=$(find $ANDROID_HOME/build-tools -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+        $BUILD_TOOLS_DIR/apksigner sign \
+          --ks release.jks \
+          --ks-key-alias umacounter \
+          --ks-pass pass:mysecretpass \
+          --key-pass pass:mysecretpass \
+          --out app/build/outputs/apk/release/UmaCounter-Signed.apk \
+          app/build/outputs/apk/release/app-release-unsigned.apk
+
+    # 4. 서명 완료된 최종 APK 업로드
+    - name: Upload Signed APK
       uses: actions/upload-artifact@v4
       with:
-        name: UmaCounter-Floating-APK
-        path: app/build/outputs/apk/debug/*.apk
+        name: UmaCounter-Signed-APK
+        path: app/build/outputs/apk/release/UmaCounter-Signed.apk
