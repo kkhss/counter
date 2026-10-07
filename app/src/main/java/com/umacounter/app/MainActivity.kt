@@ -25,17 +25,20 @@ class MainActivity : AppCompatActivity() {
 
         initCardInputs()
 
+        // 카드 설정 저장 및 플로팅 창 실시간 적용 버튼
         findViewById<Button>(R.id.btnSaveCards).setOnClickListener {
             saveCurrentCardsToPrefs()
-            sendBroadcast(Intent("com.umacounter.UPDATE_CARDS"))
+            notifyFloatingService()
             Toast.makeText(this, "카드 설정이 플로팅 창에 적용되었습니다.", Toast.LENGTH_SHORT).show()
         }
 
+        // 프리셋 버튼들
         findViewById<Button>(R.id.btnPreset1Save).setOnClickListener { savePreset(1) }
         findViewById<Button>(R.id.btnPreset1Load).setOnClickListener { loadPreset(1) }
         findViewById<Button>(R.id.btnPreset2Save).setOnClickListener { savePreset(2) }
         findViewById<Button>(R.id.btnPreset2Load).setOnClickListener { loadPreset(2) }
 
+        // 카운터 띄우기
         findViewById<Button>(R.id.btnStart).setOnClickListener {
             saveCurrentCardsToPrefs()
             if (checkOverlayPermission()) {
@@ -45,10 +48,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // 카운터 끄기
         findViewById<Button>(R.id.btnStop).setOnClickListener {
             stopService(Intent(this, FloatingService::class.java))
             Toast.makeText(this, "카운터 종료", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun notifyFloatingService() {
+        val intent = Intent("com.umacounter.UPDATE_CARDS").apply {
+            setPackage(packageName) // 최신 안드로이드에서 수신자 패키지 지정 필수
+        }
+        sendBroadcast(intent)
     }
 
     private fun initCardInputs() {
@@ -127,7 +138,7 @@ class MainActivity : AppCompatActivity() {
             typeSpinners[i].setSelection(selIndex)
         }
         saveCurrentCardsToPrefs()
-        sendBroadcast(Intent("com.umacounter.UPDATE_CARDS"))
+        notifyFloatingService()
         Toast.makeText(this, "[$name] 불러오기 완료", Toast.LENGTH_SHORT).show()
     }
 
